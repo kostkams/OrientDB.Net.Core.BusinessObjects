@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="OrientDB-Net.binary.Innov8tive">
+      <HintPath>..\..\3rd Party\OrientDB\OrientDB-Net.binary.Innov8tive.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

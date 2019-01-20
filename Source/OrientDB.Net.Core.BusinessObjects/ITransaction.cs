@@ -13,5 +13,7 @@ namespace OrientDB.Net.Core.BusinessObjects
         void Delete(IBusinessObject businessObject);
 
         void Update(IBusinessObject businessObject);
+
+        void CreateEdge(IBusinessObject from, IBusinessObject to, string edgeClassName);
     }
 }

@@ -6,6 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OrientDB.Net.Core.BusinessObjects.Generator\OrientDB.Net.Core.BusinessObjects.Generator.csproj" />
     <ProjectReference Include="..\OrientDB.Net.Core.BusinessObjects\OrientDB.Net.Core.BusinessObjects.csproj" />
   </ItemGroup>
 

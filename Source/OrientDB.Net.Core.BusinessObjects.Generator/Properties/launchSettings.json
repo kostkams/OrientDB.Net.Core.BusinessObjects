@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "OrientDB.Net.Core.BusinessObjects.Generator": {
+      "commandName": "Project",
+      "commandLineArgs": "-o \"C:\\Users\\shinpei\\Desktop\\BO\\Generated\" -c \"C:\\Users\\shinpei\\Desktop\\BO\\Config.json\""
+    }
+  }
+}

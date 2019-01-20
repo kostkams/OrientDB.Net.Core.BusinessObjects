@@ -16,7 +16,7 @@ namespace OrientDB.Net.Core.BusinessObjects.Generator.Generator
             sb.AppendLine("  </PropertyGroup>");
             sb.AppendLine("");
             sb.AppendLine("  <ItemGroup>");
-            sb.AppendLine("     <PackageReference Include=\"OrientDB.Net.Core.BusinessObjects\" Version=\"1.0.1\" />");
+            sb.AppendLine("     <PackageReference Include=\"OrientDB.Net.Core.BusinessObjects\" Version=\"1.0.2\" />");
             sb.AppendLine("  </ItemGroup>");
             sb.AppendLine("");
             sb.AppendLine("</Project>");

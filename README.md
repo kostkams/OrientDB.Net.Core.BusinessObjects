@@ -108,7 +108,7 @@ private static void Main()
   // Get the person by name
   using (var session = businessDocument.OpenSession())
   {
-    session.Get<IPersion>(p => p.FirstName == "John" && p.LastName == "Doe").First();
+    session.Get<IPerson>(p => p.FirstName == "John" && p.LastName == "Doe").First();
   }
 }
 ```

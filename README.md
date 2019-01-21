@@ -86,7 +86,7 @@ using Persion.Tutorial;
 ```
 In the _Main_ method add the following code:
 ```C#
-private stativ void Main()
+private static void Main()
 {
   var businessDocument = BusinessDocumentFactory.Connect(new ConnectionInfo("localhost",
                                                                             2424,

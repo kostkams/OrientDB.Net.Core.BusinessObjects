@@ -15,13 +15,21 @@ namespace OrientDB.Net.Core.BusinessObjects.Generator
             var configurationFileOption = commandLineApplication.Option("-c|--configuration <configurationFile>", "The configuration file path", CommandOptionType.SingleValue);
             commandLineApplication.OnExecute(() =>
                                              {
-                                                 if (!configurationFileOption.HasValue()) { throw new Exception("Configuration is missing");}
-                                                 if (!outputDirOption.HasValue()) { throw new Exception("Output directory is missing");}
+                                                 try
+                                                 {
+                                                     if (!configurationFileOption.HasValue()) throw new Exception("Configuration is missing");
+                                                     if (!outputDirOption.HasValue()) throw new Exception("Output directory is missing");
 
-                                                 var configurationFile = new FileInfo(configurationFileOption.Value());
-                                                 if (!configurationFile.Exists) throw new Exception("Configuration not found");
-                                                 var configuration = JsonConvert.DeserializeObject<Configuration>(File.ReadAllText(configurationFile.FullName));
-                                                 BOGenerator.Execute(new DirectoryInfo(outputDirOption.Value()), configuration);
+                                                     var configurationFile = new FileInfo(configurationFileOption.Value());
+                                                     if (!configurationFile.Exists) throw new Exception("Configuration not found");
+                                                     var configuration = JsonConvert.DeserializeObject<Configuration>(File.ReadAllText(configurationFile.FullName));
+                                                     BOGenerator.Execute(new DirectoryInfo(outputDirOption.Value()), configuration);
+                                                 }
+                                                 catch (Exception e)
+                                                 {
+                                                     Console.WriteLine(e);
+                                                 }
+
                                                  return 0;
                                              });
 

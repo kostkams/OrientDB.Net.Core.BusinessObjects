@@ -102,16 +102,13 @@ namespace OrientDB.Net.Core.BusinessObjects.Query
                     continue;
                 var outORID = item.GetField<List<ORID>>(outORIDKey).Single().ToString();
                 var referenceBos = database.Query(new PreparedQuery($"SELECT * FROM {referenceList.Attr.EdgeClassName} WHERE @rid=:id")
-                                                       .Set("id", outORID))
-                                             .Run()
-                                             .Select(referenceEdge => referenceEdge.To<OEdge>())
-                                             .Select(referenceBo => ExecuteById(referenceList.Prop.PropertyType, referenceBo.InV.ToString()))
-                                             .ToList();
+                                                     .Set("id", outORID))
+                                           .Run()
+                                           .Select(referenceEdge => referenceEdge.To<OEdge>())
+                                           .Select(referenceBo => ExecuteById(referenceList.Prop.PropertyType, referenceBo.InV.ToString()))
+                                           .ToList();
                 var list = (IList) referenceList.Prop.GetValue(realBo);
-                foreach (var referenceBo in referenceBos)
-                {
-                    list.Add(referenceBo);
-                }
+                foreach (var referenceBo in referenceBos) list.Add(referenceBo);
             }
 
             return realBo;
@@ -139,7 +136,8 @@ namespace OrientDB.Net.Core.BusinessObjects.Query
             var flatten = Flatten(parsedExpression).Where(item => item != null).ToList();
 
             var preparedQuery = new PreparedQuery(sb.ToString());
-            foreach (var parsingForQuery in flatten) preparedQuery.Set(parsingForQuery.Key, parsingForQuery.Value);
+            foreach (var parsingForQuery in flatten)
+                preparedQuery.Set(parsingForQuery.Key, parsingForQuery.Value);
 
             return preparedQuery;
         }
@@ -174,16 +172,19 @@ namespace OrientDB.Net.Core.BusinessObjects.Query
             return result;
         }
 
-
         private ParsedExpression GetBinaryExpression(BinaryExpression expression, Type boType, ParsedExpression parent)
         {
             switch (expression.NodeType)
             {
                 case ExpressionType.Equal:
                 case ExpressionType.NotEqual:
-                    var variable = expression.Right.ToString().Contains(".") ? GetKey(boType, expression.Right.ToString()) : GetKey(boType, expression.Left.ToString());
-                    var value = !expression.Left.ToString().Contains(".") ? expression.Left.ToString() : expression.Right.ToString();
-                    parent.Value = new ParsingForQuery(value.Replace("\"", ""),
+                    var variable = expression.Left.NodeType == ExpressionType.MemberAccess
+                                       ? ((MemberExpression) expression.Left).Member.Name
+                                       : ((MemberExpression) expression.Right).Member.Name;
+                    var value = expression.Right.NodeType == ExpressionType.Constant
+                                    ? ((ConstantExpression) expression.Right).Value
+                                    : ((ConstantExpression) expression.Left).Value;
+                    parent.Value = new ParsingForQuery(value.ToString(),
                                                        expression.NodeType == ExpressionType.Equal ? "=" : "!=",
                                                        variable);
                     break;
@@ -214,17 +215,6 @@ namespace OrientDB.Net.Core.BusinessObjects.Query
             }
 
             return null;
-        }
-
-        private string GetKey(Type boType, string expressionString)
-        {
-            var attribute = boType.GetProperties()
-                                  .Where(p => p.Name == expressionString.Substring(2))
-                                  .Select(p => p.GetCustomAttribute<DocumentPropertyAttribute>())
-                                  .SingleOrDefault();
-            if (attribute == null)
-                throw new Exception($"'{expressionString.Substring(2)}' is no db property");
-            return attribute.Key;
         }
 
         private class ParsedExpression

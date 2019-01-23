@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace OrientDB.Net.Core.BusinessObjects.Generator.Generator
@@ -8,10 +9,14 @@ namespace OrientDB.Net.Core.BusinessObjects.Generator.Generator
         public static void Execute(DirectoryInfo outputDirectory, Configuration configuration, Project project, Type businessObjectType)
         {
             var sb = new StringBuilder();
+            if (businessObjectType.Properties.Any(p => p.Type == EType.Guid || p.Type == EType.DateTime))
+                sb.AppendLine("using System;");
             if (businessObjectType.ReferenceLists != null)
                 sb.AppendLine("using System.Collections.Generic;");
-            if (businessObjectType.Children != null)
-                sb.AppendLine("using System.Reflection;");
+            foreach (var projectConfiguration in GeneratorHelper.GetReferencedProjects(configuration, project, businessObjectType))
+            {
+                sb.AppendLine($"using {projectConfiguration.Name};");
+            }
             sb.AppendLine("using OrientDB.Net.Core.BusinessObjects;");
             sb.AppendLine();
             sb.AppendLine($"namespace {project.Name}{(string.IsNullOrEmpty(configuration.Namespace) ? "" : $".{configuration.Namespace}")}");
@@ -61,13 +66,6 @@ namespace OrientDB.Net.Core.BusinessObjects.Generator.Generator
                 sb.AppendLine("        {");
                 sb.AppendLine($"            var {businessObjectType.Name.ToCamelCase()} = new {businessObjectType.Name}BO();");
                 sb.AppendLine($"            transaction.Create({businessObjectType.Name.ToCamelCase()});");
-                //if (businessObjectType.Children != null)
-                //    foreach (var child in businessObjectType.Children)
-                //    {
-                //        sb.AppendLine($"            var {child.Name.ToCamelCase()} = transaction.Create{child.Name.ToCamelUpperCase()}();");
-                //        sb.AppendLine($"            {businessObjectType.Name.ToCamelCase()}.{child.Name.ToCamelUpperCase()} = {child.Name.ToCamelCase()};");
-                //        sb.AppendLine($"            transaction.CreateEdge({businessObjectType.Name.ToCamelCase()}, {child.Name.ToCamelCase()}, {businessObjectType.Name.ToCamelCase()}.GetType().GetProperty(\"{child.Name.ToCamelUpperCase()}\").GetCustomAttribute<ChildAttribute>().EdgeClassName);");
-                //    }
                 sb.AppendLine($"            return {businessObjectType.Name.ToCamelCase()};");
                 sb.AppendLine("        }");
                 sb.AppendLine("    }");

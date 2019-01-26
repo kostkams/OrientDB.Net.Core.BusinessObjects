@@ -6,7 +6,7 @@
     <Authors>Matthias Kostka</Authors>
     <Company />
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <RepositoryUrl>https://github.com/kostkams/OrientDB.Net.Core.BusinessObjects</RepositoryUrl>
     <RepositoryType>GIT</RepositoryType>
     <PackageLicenseUrl>https://github.com/kostkams/OrientDB.Net.Core.BusinessObjects/blob/master/LICENSE</PackageLicenseUrl>

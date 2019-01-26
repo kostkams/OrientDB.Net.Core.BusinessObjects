@@ -19,6 +19,11 @@ namespace OrientDB.Net.Core.BusinessObjects.Console
 
             using (var session = businessDocument.OpenSession())
             {
+                var l = new
+                        {
+                            Hi = "ge"
+                        };
+
                 var transaction = session.BeginTransaction();
                 var comp = transaction.CreateCompany();
                 comp.Name = "Neu";
@@ -28,6 +33,10 @@ namespace OrientDB.Net.Core.BusinessObjects.Console
                 comp.Members.Add(member);
                 transaction.Commit();
                 
+                var z = session.Get<ICompany>().Where(c => c.Name != "Neudddd")
+                               .OrderBy(c => c.Name)
+                               .ToList()
+                               .FirstOrDefault();
                 
                 transaction = session.BeginTransaction();
                 comp.Name = "Neu 1";
@@ -39,8 +48,6 @@ namespace OrientDB.Net.Core.BusinessObjects.Console
 
                 
                 transaction = session.BeginTransaction();
-                var companyFromDB = session.Get<ICompany>(c => c.Name == "Neu 1").First();
-                transaction.Delete(companyFromDB);
                 transaction.Commit();
             }
         }

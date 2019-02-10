@@ -183,10 +183,8 @@ namespace OrientDB.Net.Core.BusinessObjects
             {
                 var list = (IList) referenceList.Prop.GetValue(businessObject);
                 foreach (var referenceBo in list.OfType<IBusinessObject>())
-                    if (string.IsNullOrEmpty(referenceBo.Id))
+                    if (!string.IsNullOrEmpty(referenceBo.Id))
                         transactionEdges.Add(new TransactionEdge(businessObject, referenceBo, referenceList.Attr.EdgeClassName, ETransaction.Create));
-                    else
-                        transactionItems.Add(new TransactionItem(ETransaction.Update, referenceBo));
             }
         }
 

@@ -18,15 +18,9 @@ namespace OrientDB.Net.Core.BusinessObjects.Query
             this.database = database;
         }
 
-        public IReadOnlyList<TBO> Execute<TBO>(string query, IDictionary<string, string> parameters) where TBO : IBusinessObject
+        public IReadOnlyList<TBO> Execute<TBO>(string query) where TBO : IBusinessObject
         {
-            var preparedQuery = new PreparedQuery(query);
-            foreach (var parameter in parameters)
-                preparedQuery.Set(parameter.Key, parameter.Value);
-
-            var items = parameters.Any()
-                            ? database.Query(preparedQuery).Run()
-                            : database.Query(query);
+            var items = database.Query(query);
 
             var result = ConvertItems<TBO>(items, BoActivator.GetImplementationType(typeof(TBO)));
             return new ReadOnlyCollection<TBO>(result);
@@ -36,7 +30,7 @@ namespace OrientDB.Net.Core.BusinessObjects.Query
         {
             return (TBO) ExecuteById(typeof(TBO), id);
         }
-        
+
 
         private BusinessObject ConvertItem(Type boType, ODocument item)
         {
@@ -86,15 +80,19 @@ namespace OrientDB.Net.Core.BusinessObjects.Query
                 var outORIDKey = item.Keys.SingleOrDefault(k => k.ToLower() == $"out_{referenceList.Attr.EdgeClassName.ToLower()}");
                 if (outORIDKey == null)
                     continue;
-                var outORID = item.GetField<List<ORID>>(outORIDKey).Single().ToString();
-                var referenceBos = database.Query(new PreparedQuery($"SELECT * FROM {referenceList.Attr.EdgeClassName} WHERE @rid=:id")
-                                                     .Set("id", outORID))
-                                           .Run()
-                                           .Select(referenceEdge => referenceEdge.To<OEdge>())
-                                           .Select(referenceBo => ExecuteById(referenceList.Prop.PropertyType, referenceBo.InV.ToString()))
-                                           .ToList();
-                var list = (IList) referenceList.Prop.GetValue(realBo);
-                foreach (var referenceBo in referenceBos) list.Add(referenceBo);
+
+                var outORIDKeys = item.GetField<List<ORID>>(outORIDKey);
+                foreach (var outORID in outORIDKeys)
+                {
+                    var referenceBos = database.Query(new PreparedQuery($"SELECT * FROM {referenceList.Attr.EdgeClassName} WHERE @rid=:id")
+                                                         .Set("id", outORID))
+                                               .Run()
+                                               .Select(referenceEdge => referenceEdge.To<OEdge>())
+                                               .Select(referenceBo => ExecuteById(referenceList.Prop.PropertyType, referenceBo.InV.ToString()))
+                                               .ToList();
+                    var list = (IList) referenceList.Prop.GetValue(realBo);
+                    foreach (var referenceBo in referenceBos) list.Add(referenceBo);
+                }
             }
 
             return realBo;

@@ -4,32 +4,51 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace OrientDB.Net.Core.BusinessObjects.Query
 {
+    public static class MyExtensionMethods
+    {
+        public static Dictionary<string, string> MatchNamedCaptures(this Regex regex, string input)
+        {
+            var namedCaptureDictionary = new Dictionary<string, string>();
+            GroupCollection groups = regex.Match(input).Groups;
+            string[] groupNames = regex.GetGroupNames();
+            foreach (string groupName in groupNames)
+                if (groups[groupName].Captures.Count > 0)
+                    namedCaptureDictionary.Add(groupName, groups[groupName].Value);
+            return namedCaptureDictionary;
+        }
+    }
+
     internal class OrientExpressionVisitor : ExpressionVisitor
     {
         private Type boType;
         private StringBuilder sb;
         private int? Skip { get; set; }
 
-        private int? Take { get;  set; }
+        private int? Take { get; set; }
 
         private string OrderBy { get; set; }
 
         private string WhereClause { get; set; }
-
-        public IDictionary<string, string> Parameters { get; private set; }
+        
 
         public string Translate<TBO>(Expression expression) where TBO : IBusinessObject
         {
             var bo = BoActivator.GetInstance(typeof(TBO));
             boType = bo.GetType();
-
-            Parameters = new Dictionary<string, string>();
+            
             sb = new StringBuilder();
             Visit(expression);
-            WhereClause = sb.ToString();
+
+
+            var matchCollection = new Regex("'%(?<variable>('.*?'))%'").MatchNamedCaptures(sb.ToString());
+
+            WhereClause = matchCollection.ContainsKey("variable")
+                              ? sb.ToString().Replace(matchCollection["variable"], matchCollection["variable"].Trim('\''))
+                              : sb.ToString();
 
             var querySb = new StringBuilder($"SELECT * FROM {bo.ClassName} ");
             if (!string.IsNullOrEmpty(WhereClause))
@@ -74,17 +93,11 @@ namespace OrientDB.Net.Core.BusinessObjects.Query
                     break;
 
                 case ExpressionType.Equal:
-                    if (IsNullConstant(b.Right))
-                        sb.Append(" IS ");
-                    else
-                        sb.Append(" = ");
+                    sb.Append(IsNullConstant(b.Right) ? " IS " : " = ");
                     break;
 
                 case ExpressionType.NotEqual:
-                    if (IsNullConstant(b.Right))
-                        sb.Append(" IS NOT ");
-                    else
-                        sb.Append(" <> ");
+                    sb.Append(IsNullConstant(b.Right) ? " IS NOT " : " <> ");
                     break;
 
                 case ExpressionType.LessThan:
@@ -112,42 +125,47 @@ namespace OrientDB.Net.Core.BusinessObjects.Query
             return b;
         }
 
-        private string RandomString()
-        {
-            var random = new Random();
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            return new string(Enumerable.Repeat(chars, 5)
-                                        .Select(s => s[random.Next(s.Length)]).ToArray());
-        }
         protected override Expression VisitConstant(ConstantExpression c)
         {
             var q = c.Value as IQueryable;
 
             if (q == null && c.Value == null)
+            {
                 sb.Append("NULL");
+            }
             else if (q == null)
             {
-                var key = RandomString();
-                sb.Append($":{key}");
                 switch (Type.GetTypeCode(c.Value.GetType()))
                 {
                     case TypeCode.Boolean:
-                        Parameters.Add(key, ((bool)c.Value ? 1 : 0).ToString());
+                        sb.Append($"'{((bool) c.Value ? 1 : 0)}'");
                         break;
 
                     case TypeCode.String:
-                        Parameters.Add(key, c.Value.ToString());
+                        sb.Append($"'{c.Value}'");
                         break;
 
                     case TypeCode.DateTime:
-                        Parameters.Add(key, c.Value.ToString());
+                        sb.Append($"'{c.Value}'");
                         break;
 
                     case TypeCode.Object:
+                        if (c.Value.GetType().BaseType == typeof(Array))
+                        {
+                            var arr = ((Array) c.Value);
+                            var sb1 = new StringBuilder();
+                            foreach (var item in arr)
+                            {
+                                sb1.Append($"'{item}',");
+                            }
+                            sb.Append($"[{sb1.ToString().Trim(',')}]");
+
+                            break;
+                        }
                         throw new NotSupportedException($"The constant for '{c.Value}' is not supported");
 
                     default:
-                        Parameters.Add(key, c.Value.ToString());
+                        sb.Append($"'{c.Value}'");
                         break;
                 }
             }
@@ -173,19 +191,16 @@ namespace OrientDB.Net.Core.BusinessObjects.Query
                     Visit(res);
                     return m;
                 }
-            }
 
-            if (m.Expression != null && m.Expression.NodeType == ExpressionType.Parameter)
-            {
+                if (m.Expression.NodeType == ExpressionType.Constant)
+                {
+                    var res = Evaluator.PartialEval(m);
+                    Visit(res);
+                    return m;
+                }
             }
 
             throw new NotSupportedException($"The member '{m.Member.Name}' is not supported");
-        }
-
-        private string GetColumnName(MemberExpression m)
-        {
-            var key = boType.GetProperty(m.Member.Name).GetCustomAttribute<DocumentPropertyAttribute>().Key;
-            return key;
         }
 
         protected override Expression VisitMethodCall(MethodCallExpression m)
@@ -230,6 +245,21 @@ namespace OrientDB.Net.Core.BusinessObjects.Query
                     return Visit(nextExpression);
                 }
             }
+            else if (m.Method.Name == "Contains")
+            {
+                if (ParseContainsExpression(m))
+                {
+                    var nextExpression = m.Arguments[0];
+                    sb.Append("'%");
+                    var visited = Visit(nextExpression);
+                    sb.Append("%'");
+                    return visited;
+                }
+                if (ParseContainsInArrayExpression(m))
+                {
+                    return m;
+                }
+            }
 
             throw new NotSupportedException($"The method '{m.Method.Name}' is not supported");
         }
@@ -252,6 +282,34 @@ namespace OrientDB.Net.Core.BusinessObjects.Query
             return u;
         }
 
+        private string GetColumnName(MemberExpression m)
+        {
+            var key = boType.GetProperty(m.Member.Name).GetCustomAttribute<DocumentPropertyAttribute>().Key;
+            return key;
+        }
+
+        private bool ParseContainsExpression(MethodCallExpression expression)
+        {
+            if (expression.Object is MemberExpression memberExpression)
+            {
+                sb.Append($"{GetColumnName(memberExpression)} like ");
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool ParseContainsInArrayExpression(MethodCallExpression expression)
+        {
+            var methodCallExpression = (MethodCallExpression)Evaluator.PartialEval(expression);
+
+            Visit(methodCallExpression.Arguments[1]);
+            sb.Append(" in ");
+            Visit(methodCallExpression.Arguments[0]);
+
+            return true;
+        }
+
         private bool ParseOrderByExpression(MethodCallExpression expression, string order)
         {
             var unary = (UnaryExpression) expression.Arguments[1];
@@ -262,8 +320,8 @@ namespace OrientDB.Net.Core.BusinessObjects.Query
             if (lambdaExpression.Body is MemberExpression body)
             {
                 var key = GetColumnName(body);
-                OrderBy = string.IsNullOrEmpty(OrderBy) 
-                              ? $"{key} {order}" 
+                OrderBy = string.IsNullOrEmpty(OrderBy)
+                              ? $"{key} {order}"
                               : $"{OrderBy}, {key} {order}";
 
                 return true;

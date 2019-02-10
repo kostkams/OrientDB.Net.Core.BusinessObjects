@@ -32,7 +32,11 @@ namespace OrientDB.Net.Core.BusinessObjects.Console
                 member.Address.Name = "Haus";
                 comp.Members.Add(member);
                 transaction.Commit();
-                
+                var tt = new[] {"Member", "Neu"};
+                var companies = session.Get<ICompany>()
+                                       .Where(c => c.Members.Any(m => m.Name == "Member"))
+                                       .ToList();
+
                 var z = session.Get<ICompany>().Where(c => c.Name != "Neudddd")
                                .OrderBy(c => c.Name)
                                .ToList()

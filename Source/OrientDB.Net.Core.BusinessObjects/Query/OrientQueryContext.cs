@@ -19,7 +19,7 @@ namespace OrientDB.Net.Core.BusinessObjects.Query
             var query = orientExpressionVisitor.Translate<TBO>(expression);
 
             var getQuery = new GetQuery(database);
-            return getQuery.Execute<TBO>(query, orientExpressionVisitor.Parameters);
+            return getQuery.Execute<TBO>(query);
         }
     }
 }

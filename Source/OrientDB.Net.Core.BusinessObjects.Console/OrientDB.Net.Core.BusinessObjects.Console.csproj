@@ -14,4 +14,10 @@
     <ProjectReference Include="..\OrientDB.Net.Core.BusinessObjects\OrientDB.Net.Core.BusinessObjects.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="OrientDB-Net.binary.Innov8tive">
+      <HintPath>..\..\3rd Party\OrientDB\OrientDB-Net.binary.Innov8tive.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>
